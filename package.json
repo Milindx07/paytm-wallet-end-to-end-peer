@@ -1,0 +1,31 @@
+{
+  "name": "paytm-wallet-end-to-end-peer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Concurrent peer-to-peer wallet backend with Express, Next.js, Redis, PostgreSQL row-level locking, OpenAPI SDK generation, and Nginx deployment.",
+  "author": "Milan <milansmbp@gmail.com>",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace @wallet/api\" \"npm run dev --workspace @wallet/web\"",
+    "build": "npm run build --workspace @wallet/openapi-client && npm run build --workspace @wallet/api && npm run build --workspace @wallet/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "generate:sdk": "openapi --input openapi.yaml --output packages/openapi-client/src/generated --client fetch --useOptions",
+    "db:migrate": "npm run db:migrate --workspace @wallet/api",
+    "db:seed": "npm run db:seed --workspace @wallet/api",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down --remove-orphans",
+    "compose:logs": "docker compose logs -f",
+    "health": "node scripts/health-check.mjs",
+    "deploy:local": "npm run compose:up && npm run health"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "openapi-typescript-codegen": "^0.29.0",
+    "typescript": "^5.9.3"
+  }
+}

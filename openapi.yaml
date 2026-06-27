@@ -1,0 +1,341 @@
+openapi: 3.0.3
+info:
+  title: Paytm Wallet P2P API
+  version: 1.0.0
+  description: Concurrent peer-to-peer wallet API with Redis idempotency and PostgreSQL row-level locking.
+servers:
+  - url: http://localhost:4000
+    description: Local API
+  - url: http://localhost/api
+    description: Nginx proxied API
+security:
+  - bearerAuth: []
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      security: []
+      summary: Service health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a new user and wallet
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Registered session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Login with email and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/wallet:
+    get:
+      tags: [Wallet]
+      summary: Get current wallet
+      operationId: getWallet
+      responses:
+        "200":
+          description: Wallet summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+  /api/wallet/add-money:
+    post:
+      tags: [Wallet]
+      summary: Add money to current user's wallet
+      operationId: addMoney
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema:
+            type: string
+          required: false
+          description: Optional unique key to make retries safe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMoneyRequest"
+      responses:
+        "200":
+          description: Updated wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+  /api/transfer:
+    post:
+      tags: [Transfer]
+      summary: Send money to another user
+      operationId: transferMoney
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema:
+            type: string
+          required: true
+          description: Unique request key for safe retries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      responses:
+        "201":
+          description: Transfer completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferResponse"
+        "400":
+          description: Business validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate or in-flight idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/transactions:
+    get:
+      tags: [Transactions]
+      summary: List wallet transactions
+      operationId: listTransactions
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Recent transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionsResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, postgres, redis, uptime]
+      properties:
+        status:
+          type: string
+          example: ok
+        postgres:
+          type: string
+          example: ok
+        redis:
+          type: string
+          example: ok
+        uptime:
+          type: number
+          example: 12.34
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          example: Milan
+        email:
+          type: string
+          format: email
+          example: milan@example.com
+        password:
+          type: string
+          minLength: 8
+          example: password123
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: milan@example.com
+        password:
+          type: string
+          example: password123
+    AuthResponse:
+      type: object
+      required: [token, user, wallet]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+    Wallet:
+      type: object
+      required: [id, userId, balancePaise, balanceDisplay, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        balancePaise:
+          type: integer
+          example: 250000
+        balanceDisplay:
+          type: string
+          example: INR 2,500.00
+        currency:
+          type: string
+          example: INR
+    WalletResponse:
+      type: object
+      required: [wallet]
+      properties:
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+    AddMoneyRequest:
+      type: object
+      required: [amountPaise]
+      properties:
+        amountPaise:
+          type: integer
+          minimum: 100
+          example: 10000
+    TransferRequest:
+      type: object
+      required: [receiverEmail, amountPaise]
+      properties:
+        receiverEmail:
+          type: string
+          format: email
+          example: aisha@example.com
+        amountPaise:
+          type: integer
+          minimum: 100
+          example: 5000
+        note:
+          type: string
+          maxLength: 160
+          example: Coffee split
+    TransferResponse:
+      type: object
+      required: [transaction, wallet]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+    TransactionsResponse:
+      type: object
+      required: [transactions]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+    Transaction:
+      type: object
+      required: [id, type, counterpartyName, counterpartyEmail, amountPaise, amountDisplay, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [credit, debit]
+        counterpartyName:
+          type: string
+        counterpartyEmail:
+          type: string
+          format: email
+        amountPaise:
+          type: integer
+        amountDisplay:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Insufficient balance
