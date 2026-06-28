@@ -86,6 +86,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WalletResponse"
+  /api/profile:
+    get:
+      tags: [Profile]
+      summary: Get current profile and KYC status
+      operationId: getProfile
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+  /api/profile/aadhaar/link:
+    post:
+      tags: [Profile]
+      summary: Link Aadhaar-style KYC using masked storage
+      operationId: linkAadhaar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkAadhaarRequest"
+      responses:
+        "200":
+          description: Updated KYC profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+  /api/receivers/resolve:
+    get:
+      tags: [Receivers]
+      summary: Resolve a receiver by email or simulated UPI ID
+      operationId: resolveReceiver
+      parameters:
+        - in: query
+          name: identifier
+          required: true
+          schema:
+            type: string
+          example: aisha@example.com
+      responses:
+        "200":
+          description: Receiver verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiverResponse"
+  /api/ops/snapshot:
+    get:
+      tags: [Ops]
+      summary: Return backend health and wallet snapshot
+      operationId: getOpsSnapshot
+      responses:
+        "200":
+          description: Backend snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpsSnapshot"
+  /api/ops/isolation:
+    get:
+      tags: [Ops]
+      summary: Explain transaction isolation from backend
+      operationId: getIsolationDetails
+      responses:
+        "200":
+          description: Isolation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IsolationDetails"
+  /api/ops/retry-safety:
+    get:
+      tags: [Ops]
+      summary: Explain Redis idempotency from backend
+      operationId: getRetrySafetyDetails
+      responses:
+        "200":
+          description: Retry safety details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetrySafetyDetails"
   /api/wallet/add-money:
     post:
       tags: [Wallet]
@@ -264,6 +349,101 @@ components:
       properties:
         wallet:
           $ref: "#/components/schemas/Wallet"
+    ProfileResponse:
+      type: object
+      required: [user, kyc]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        kyc:
+          $ref: "#/components/schemas/KycProfile"
+    KycProfile:
+      type: object
+      required: [aadhaarLinked, kycStatus, bankName, riskTier]
+      properties:
+        aadhaarLinked:
+          type: boolean
+        aadhaarMasked:
+          type: string
+          nullable: true
+          example: XXXX XXXX 4321
+        kycStatus:
+          type: string
+          enum: [pending, verified, review]
+        upiId:
+          type: string
+          nullable: true
+          example: milan@wallet
+        bankName:
+          type: string
+        riskTier:
+          type: string
+          enum: [standard, trusted, review]
+        consentAcceptedAt:
+          type: string
+          format: date-time
+          nullable: true
+    LinkAadhaarRequest:
+      type: object
+      required: [aadhaarLast4, consentAccepted]
+      properties:
+        aadhaarLast4:
+          type: string
+          pattern: "^[0-9]{4}$"
+          example: "4321"
+        consentAccepted:
+          type: boolean
+          enum: [true]
+        upiId:
+          type: string
+          example: milan@wallet
+    ReceiverResponse:
+      type: object
+      required: [receiver]
+      properties:
+        receiver:
+          $ref: "#/components/schemas/Receiver"
+    Receiver:
+      type: object
+      required: [userId, name, email, walletId, aadhaarLinked, kycStatus, riskTier, rails, settlement]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        walletId:
+          type: string
+          format: uuid
+        upiId:
+          type: string
+          nullable: true
+        aadhaarLinked:
+          type: boolean
+        kycStatus:
+          type: string
+          enum: [pending, verified, review]
+        riskTier:
+          type: string
+          enum: [standard, trusted, review]
+        rails:
+          type: array
+          items:
+            type: string
+        settlement:
+          type: string
+    OpsSnapshot:
+      type: object
+      additionalProperties: true
+    IsolationDetails:
+      type: object
+      additionalProperties: true
+    RetrySafetyDetails:
+      type: object
+      additionalProperties: true
     AddMoneyRequest:
       type: object
       required: [amountPaise]

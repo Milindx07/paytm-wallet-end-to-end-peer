@@ -47,6 +47,40 @@ async function seed(): Promise<void> {
         `,
         [insertedUser.rows[0].id, user.balancePaise]
       );
+
+      await client.query(
+        `
+          INSERT INTO kyc_profiles (
+            user_id,
+            aadhaar_last4,
+            aadhaar_linked,
+            kyc_status,
+            upi_id,
+            bank_name,
+            risk_tier,
+            consent_accepted_at
+          )
+          VALUES ($1, $2, true, 'verified', $3, 'Paytm Payments Bank simulator', 'trusted', now())
+          ON CONFLICT (user_id)
+          DO UPDATE SET
+            aadhaar_last4 = EXCLUDED.aadhaar_last4,
+            aadhaar_linked = true,
+            kyc_status = 'verified',
+            upi_id = EXCLUDED.upi_id,
+            bank_name = EXCLUDED.bank_name,
+            risk_tier = 'trusted',
+            consent_accepted_at = now()
+        `,
+        [
+          insertedUser.rows[0].id,
+          user.email === "milan@example.com"
+            ? "4321"
+            : user.email === "aisha@example.com"
+              ? "8842"
+              : "7120",
+          `${user.email.split("@")[0]}@wallet`
+        ]
+      );
     }
 
     await client.query("COMMIT");
