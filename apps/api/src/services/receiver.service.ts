@@ -51,6 +51,7 @@ export async function resolveReceiver(identifier: string, currentUserId: string)
   }
 
   return {
+    message: `${receiver.name} is verified for instant wallet transfer.`,
     receiver: {
       userId: receiver.id,
       name: receiver.name,

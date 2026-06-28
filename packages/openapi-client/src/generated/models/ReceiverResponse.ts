@@ -4,6 +4,7 @@
 /* eslint-disable */
 import type { Receiver } from './Receiver';
 export type ReceiverResponse = {
+    message: string;
     receiver: Receiver;
 };
 

@@ -351,8 +351,10 @@ components:
           $ref: "#/components/schemas/Wallet"
     ProfileResponse:
       type: object
-      required: [user, kyc]
+      required: [message, user, kyc]
       properties:
+        message:
+          type: string
         user:
           $ref: "#/components/schemas/User"
         kyc:
@@ -399,8 +401,10 @@ components:
           example: milan@wallet
     ReceiverResponse:
       type: object
-      required: [receiver]
+      required: [message, receiver]
       properties:
+        message:
+          type: string
         receiver:
           $ref: "#/components/schemas/Receiver"
     Receiver:
@@ -437,12 +441,21 @@ components:
           type: string
     OpsSnapshot:
       type: object
+      properties:
+        message:
+          type: string
       additionalProperties: true
     IsolationDetails:
       type: object
+      properties:
+        message:
+          type: string
       additionalProperties: true
     RetrySafetyDetails:
       type: object
+      properties:
+        message:
+          type: string
       additionalProperties: true
     AddMoneyRequest:
       type: object

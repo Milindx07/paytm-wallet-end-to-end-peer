@@ -18,7 +18,6 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Banknote,
-  Building2,
   CheckCircle2,
   ChevronRight,
   CircleCheck,
@@ -42,6 +41,16 @@ import { sessionAtom, transactionsAtom, walletAtom } from "../state/session";
 
 const sessionStorageKey = "wallet-session";
 
+type BackendNotice = {
+  title: string;
+  message: string;
+  tone: "info" | "success" | "secure";
+  details: Array<{
+    label: string;
+    value: string;
+  }>;
+};
+
 function parseRupees(value: string): number {
   return Math.round(Number(value || "0") * 100);
 }
@@ -55,25 +64,32 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function BackendPanel({
-  title,
-  payload
-}: {
-  title: string;
-  payload: unknown;
-}) {
+function BackendMessagePanel({ notice }: { notice: BackendNotice }) {
+  const toneStyles = {
+    info: "border-sky-200 bg-sky-50 text-sky-800",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    secure: "border-amber-200 bg-amber-50 text-amber-800"
+  }[notice.tone];
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-[#111827] p-4 text-white shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase text-slate-400">Backend response</p>
-          <h2 className="text-base font-semibold">{title}</h2>
+          <p className="text-xs uppercase text-slate-500">Live backend message</p>
+          <h2 className="text-base font-semibold text-ink">{notice.title}</h2>
         </div>
-        <BadgeCheck size={20} className="text-paytmBlue" aria-hidden="true" />
+        <span className="flex h-9 w-9 items-center justify-center rounded-md bg-paytmBlue text-white">
+          <BadgeCheck size={20} aria-hidden="true" />
+        </span>
       </div>
-      <pre className="max-h-72 overflow-auto rounded-md bg-black/30 p-3 text-xs leading-relaxed text-slate-100">
-        {JSON.stringify(payload, null, 2)}
-      </pre>
+      <div className={`rounded-lg border px-4 py-3 text-sm ${toneStyles}`}>
+        {notice.message}
+      </div>
+      <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-2">
+        {notice.details.map((detail) => (
+          <DetailRow key={detail.label} label={detail.label} value={detail.value} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -125,9 +141,15 @@ export function DashboardClient() {
   const [note, setNote] = useState("Lunch split");
   const [aadhaarLast4, setAadhaarLast4] = useState("4321");
   const [upiId, setUpiId] = useState("milan@wallet");
-  const [backendTitle, setBackendTitle] = useState("Latest snapshot");
-  const [backendPayload, setBackendPayload] = useState<unknown>({
-    status: "Open a backend-backed card to inspect live data."
+  const [backendNotice, setBackendNotice] = useState<BackendNotice>({
+    title: "Ready for secure wallet actions",
+    message:
+      "Click profile, refresh, isolation, retry safety, or verify receiver to receive a live backend message here.",
+    tone: "info",
+    details: [
+      { label: "Source", value: "Backend APIs" },
+      { label: "Mode", value: "Message receipts" }
+    ]
   });
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +205,19 @@ export function DashboardClient() {
     setError(null);
     const response = await ProfileService.getProfile();
     setProfile(response);
-    setBackendTitle("Profile and KYC");
-    setBackendPayload(response);
+    setBackendNotice({
+      title: "Profile verified",
+      message:
+        response.message ??
+        `${response.user.name}'s wallet profile is active with ${response.kyc.kycStatus} KYC status.`,
+      tone: response.kyc.kycStatus === "verified" ? "success" : "info",
+      details: [
+        { label: "Email", value: response.user.email },
+        { label: "UPI", value: response.kyc.upiId ?? "Not mapped" },
+        { label: "Aadhaar", value: response.kyc.aadhaarMasked ?? "Not linked" },
+        { label: "Risk tier", value: response.kyc.riskTier }
+      ]
+    });
   }
 
   async function refreshFromBackend() {
@@ -194,23 +227,85 @@ export function DashboardClient() {
       loadDashboard(),
       OpsService.getOpsSnapshot()
     ]);
-    setBackendTitle("Refresh snapshot");
-    setBackendPayload({ dashboard, snapshot });
+    const source = snapshot as {
+      message?: string;
+      status?: string;
+      postgres?: { status?: string };
+      redis?: { status?: string };
+      walletBalancePaise?: number;
+    };
+    setBackendNotice({
+      title: "Dashboard refreshed",
+      message:
+        source.message ??
+        "Wallet, transaction, KYC, PostgreSQL, and Redis status were refreshed from backend services.",
+      tone: source.status === "ready" ? "success" : "info",
+      details: [
+        { label: "Backend", value: source.status ?? "ready" },
+        { label: "PostgreSQL", value: source.postgres?.status ?? "unknown" },
+        { label: "Redis", value: source.redis?.status ?? "unknown" },
+        {
+          label: "Wallet",
+          value: dashboard?.wallet.balanceDisplay ?? wallet?.balanceDisplay ?? "Updated"
+        }
+      ]
+    });
     setStatus("Dashboard refreshed from backend services.");
   }
 
   async function showIsolation() {
     setError(null);
     const response = await OpsService.getIsolationDetails();
-    setBackendTitle("Transaction isolation");
-    setBackendPayload(response);
+    const details = response as {
+      message?: string;
+      isolationLevel?: string;
+      lockOrder?: string;
+      prevents?: string[];
+    };
+    setBackendNotice({
+      title: "Transfer isolation is active",
+      message:
+        details.message ??
+        "The backend locks sender and receiver wallet rows before changing balances, so concurrent transfers cannot double-spend.",
+      tone: "secure",
+      details: [
+        { label: "Isolation", value: details.isolationLevel ?? "REPEATABLE READ" },
+        { label: "Lock order", value: details.lockOrder ?? "wallet UUID ascending" },
+        {
+          label: "Prevents",
+          value: details.prevents?.slice(0, 3).join(", ") ?? "double spending"
+        }
+      ]
+    });
   }
 
   async function showRetrySafety() {
     setError(null);
     const response = await OpsService.getRetrySafetyDetails();
-    setBackendTitle("Retry safety");
-    setBackendPayload(response);
+    const details = response as {
+      message?: string;
+      processingTtlSeconds?: number;
+      completedTtlSeconds?: number;
+      idempotencyKeyScope?: string;
+    };
+    setBackendNotice({
+      title: "Retry safety is active",
+      message:
+        details.message ??
+        "The backend stores each transfer key in Redis, so a repeated request returns the original result instead of charging twice.",
+      tone: "secure",
+      details: [
+        { label: "Scope", value: details.idempotencyKeyScope ?? "transfer key" },
+        {
+          label: "Processing TTL",
+          value: `${details.processingTtlSeconds ?? 300}s`
+        },
+        {
+          label: "Receipt TTL",
+          value: `${details.completedTtlSeconds ?? 3600}s`
+        }
+      ]
+    });
   }
 
   async function linkAadhaar(event: React.FormEvent<HTMLFormElement>) {
@@ -228,8 +323,19 @@ export function DashboardClient() {
         }
       });
       setProfile(response);
-      setBackendTitle("Aadhaar KYC mapping");
-      setBackendPayload(response);
+      setBackendNotice({
+        title: "KYC mapped successfully",
+        message:
+          response.message ??
+          "Aadhaar-style KYC has been linked using masked storage. Full Aadhaar numbers are not stored in this demo.",
+        tone: "success",
+        details: [
+          { label: "Aadhaar", value: response.kyc.aadhaarMasked ?? "Linked" },
+          { label: "UPI", value: response.kyc.upiId ?? upiId },
+          { label: "KYC", value: response.kyc.kycStatus },
+          { label: "Bank", value: response.kyc.bankName }
+        ]
+      });
       setStatus("Aadhaar-style KYC mapped using masked storage.");
     } catch (error: any) {
       setError(error?.body?.error ?? error?.message ?? "Aadhaar mapping failed");
@@ -249,8 +355,20 @@ export function DashboardClient() {
       });
       setReceiver(response.receiver);
       setReceiverIdentifier(response.receiver.email);
-      setBackendTitle("Receiver verification");
-      setBackendPayload(response);
+      setBackendNotice({
+        title: "Receiver verified",
+        message:
+          response.message ??
+          `${response.receiver.name} is verified and ready for instant wallet transfer.`,
+        tone: response.receiver.kycStatus === "verified" ? "success" : "info",
+        details: [
+          { label: "Receiver", value: response.receiver.name },
+          { label: "Email", value: response.receiver.email },
+          { label: "UPI", value: response.receiver.upiId ?? "Not mapped" },
+          { label: "KYC", value: response.receiver.kycStatus },
+          { label: "Settlement", value: response.receiver.settlement }
+        ]
+      });
       setStatus(`${response.receiver.name} is verified for instant wallet transfer.`);
     } catch (error: any) {
       setReceiver(null);
@@ -274,8 +392,16 @@ export function DashboardClient() {
         }
       });
       setWallet(response.wallet);
-      setBackendTitle("Wallet top-up");
-      setBackendPayload(response);
+      setBackendNotice({
+        title: "Money added",
+        message: `${response.wallet.balanceDisplay} is now available in your wallet after the top-up.`,
+        tone: "success",
+        details: [
+          { label: "Wallet", value: response.wallet.id.slice(0, 8) },
+          { label: "Balance", value: response.wallet.balanceDisplay },
+          { label: "Currency", value: response.wallet.currency }
+        ]
+      });
       setStatus("Wallet balance updated.");
       await loadDashboard();
     } catch (error: any) {
@@ -302,8 +428,17 @@ export function DashboardClient() {
         }
       });
       setWallet(response.wallet);
-      setBackendTitle("P2P transfer");
-      setBackendPayload(response);
+      setBackendNotice({
+        title: "Transfer completed",
+        message: `${response.transaction.amountDisplay} was sent to ${response.transaction.counterpartyName}.`,
+        tone: "success",
+        details: [
+          { label: "Receiver", value: response.transaction.counterpartyEmail },
+          { label: "Status", value: response.transaction.status },
+          { label: "Transaction", value: response.transaction.id.slice(0, 8) },
+          { label: "Balance", value: response.wallet.balanceDisplay }
+        ]
+      });
       setStatus(`Sent ${response.transaction.amountDisplay} to ${email}.`);
       await loadDashboard();
     } catch (error: any) {
@@ -386,7 +521,7 @@ export function DashboardClient() {
                   {wallet?.balanceDisplay ?? "INR 0.00"}
                 </p>
                 <p className="mt-3 text-sm text-blue-100">
-                  Wallet ID {wallet?.id.slice(0, 8) ?? "loading"} ·{" "}
+                  Wallet ID {wallet?.id.slice(0, 8) ?? "loading"} -{" "}
                   {profile?.kyc.upiId ?? "upi pending"}
                 </p>
               </div>
@@ -402,7 +537,7 @@ export function DashboardClient() {
           </div>
 
           <div className="min-w-0">
-            <BackendPanel title={backendTitle} payload={backendPayload} />
+            <BackendMessagePanel notice={backendNotice} />
           </div>
         </section>
 
@@ -427,16 +562,17 @@ export function DashboardClient() {
           />
         </section>
 
-        {status ? (
-          <div className="mt-5 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            <CircleCheck size={18} aria-hidden="true" />
-            {status}
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+        {status || error ? (
+          <div
+            aria-live="polite"
+            className={
+              error
+                ? "fixed right-4 top-4 z-50 max-w-sm rounded-lg border border-red-200 bg-white px-4 py-3 text-sm text-red-700 shadow-soft"
+                : "fixed right-4 top-4 z-50 flex max-w-sm items-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700 shadow-soft"
+            }
+          >
+            {!error ? <CircleCheck size={18} aria-hidden="true" /> : null}
+            {error ?? status}
           </div>
         ) : null}
 

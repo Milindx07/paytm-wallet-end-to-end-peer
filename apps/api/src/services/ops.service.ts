@@ -13,6 +13,7 @@ export async function getOpsSnapshot(userId: string) {
   );
 
   return {
+    message: "Dashboard refreshed from PostgreSQL and Redis.",
     source: "backend",
     status:
       db.status === "fulfilled" && redisPing.status === "fulfilled"
@@ -32,6 +33,8 @@ export async function getOpsSnapshot(userId: string) {
 
 export function getIsolationDetails() {
   return {
+    message:
+      "Transfers use PostgreSQL row-level locks so concurrent requests cannot double-spend.",
     source: "backend",
     title: "PostgreSQL row-level locking",
     isolationLevel: "REPEATABLE READ",
@@ -49,6 +52,8 @@ export function getIsolationDetails() {
 
 export function getRetrySafetyDetails() {
   return {
+    message:
+      "Redis idempotency keys make transfer retries safe and prevent duplicate charges.",
     source: "backend",
     title: "Redis idempotency guard",
     idempotencyKeyScope: "idempotency:transfer:{userId}:{key}",

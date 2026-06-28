@@ -69,7 +69,11 @@ export async function getProfile(userId: string) {
     throw new HttpError(404, "Profile not found");
   }
 
-  return serializeProfile(result.rows[0]);
+  const profile = serializeProfile(result.rows[0]);
+  return {
+    message: `${profile.user.name}'s profile is ready with ${profile.kyc.kycStatus} KYC status.`,
+    ...profile
+  };
 }
 
 export async function linkAadhaar(
@@ -116,5 +120,10 @@ export async function linkAadhaar(
     [userId, payload.aadhaarLast4, defaultUpi.toLowerCase()]
   );
 
-  return getProfile(userId);
+  const profile = await getProfile(userId);
+  return {
+    ...profile,
+    message:
+      "Aadhaar-style KYC has been linked using masked storage. Full Aadhaar numbers are not stored."
+  };
 }

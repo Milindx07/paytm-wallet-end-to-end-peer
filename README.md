@@ -76,11 +76,11 @@ Demo UPI IDs:
 
 ## Real-World Wallet Flow
 
-- Profile chip opens live backend profile/KYC data.
-- Refresh button returns a backend snapshot from PostgreSQL and Redis.
-- Isolation and retry-safety cards call backend endpoints and show the returned payload.
+- Profile chip opens a live backend profile/KYC message.
+- Refresh button returns a readable backend snapshot from PostgreSQL and Redis.
+- Isolation and retry-safety cards call backend endpoints and show message-style receipts.
 - Aadhaar KYC simulation stores only the last four digits and a consent timestamp.
-- Receiver lookup resolves by email or simulated UPI ID before transfer.
+- Receiver lookup resolves by email or simulated UPI ID before transfer and shows a verification message.
 - Transfer still uses PostgreSQL row-level locking and Redis idempotency.
 
 For a real production launch, the Aadhaar flow must be replaced with an approved KYC provider or regulated verification integration. This project intentionally stores only masked Aadhaar-style data for a safe portfolio simulation.
