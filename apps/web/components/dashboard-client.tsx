@@ -40,6 +40,7 @@ import { configureSdk, makeIdempotencyKey } from "../lib/sdk";
 import { sessionAtom, transactionsAtom, walletAtom } from "../state/session";
 
 const sessionStorageKey = "wallet-session";
+const defaultReceiverIdentifier = "aisha@wallet";
 
 type BackendNotice = {
   title: string;
@@ -176,6 +177,16 @@ export function DashboardClient() {
       setWallet(walletResponse.wallet);
       setTransactions(transactionsResponse.transactions);
       setProfile(profileResponse);
+
+      try {
+        const receiverResponse = await ReceiversService.resolveReceiver({
+          identifier: defaultReceiverIdentifier
+        });
+        setReceiver(receiverResponse.receiver);
+      } catch {
+        setReceiver(null);
+      }
+
       return {
         wallet: walletResponse.wallet,
         transactions: transactionsResponse.transactions,
@@ -354,7 +365,6 @@ export function DashboardClient() {
         identifier: receiverIdentifier
       });
       setReceiver(response.receiver);
-      setReceiverIdentifier(response.receiver.email);
       setBackendNotice({
         title: "Receiver verified",
         message:
@@ -619,6 +629,20 @@ export function DashboardClient() {
                 <LockKeyhole size={18} aria-hidden="true" />
                 Map KYC
               </button>
+              {profile ? (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                  <div className="mb-2 flex items-center gap-2 font-semibold">
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    KYC status returned
+                  </div>
+                  <DetailRow label="Status" value={profile.kyc.kycStatus} />
+                  <DetailRow label="UPI" value={profile.kyc.upiId ?? "not mapped"} />
+                  <DetailRow
+                    label="Aadhaar"
+                    value={profile.kyc.aadhaarMasked ?? "not linked"}
+                  />
+                </div>
+              ) : null}
             </form>
 
             <form
@@ -681,12 +705,13 @@ export function DashboardClient() {
                       />
                       <button
                         aria-label="Verify receiver"
-                        className="focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-200 text-trustBlue hover:border-paytmBlue"
+                        className="focus-ring flex h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 font-semibold text-trustBlue hover:border-paytmBlue"
                         disabled={isBusy}
                         type="button"
                         onClick={() => void resolveReceiver()}
                       >
                         <Search size={18} aria-hidden="true" />
+                        <span>Verify</span>
                       </button>
                     </div>
                   </label>
@@ -727,6 +752,9 @@ export function DashboardClient() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   {receiver ? (
                     <div>
+                      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                        Receiver loaded from wallet backend
+                      </div>
                       <div className="mb-4 flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-trustBlue shadow-sm">
                           <UserRound size={20} aria-hidden="true" />
@@ -736,7 +764,15 @@ export function DashboardClient() {
                           <p className="text-xs text-slate-500">{receiver.email}</p>
                         </div>
                       </div>
+                      <DetailRow
+                        label="Wallet"
+                        value={receiver.walletId.slice(0, 8)}
+                      />
                       <DetailRow label="UPI" value={receiver.upiId ?? "not set"} />
+                      <DetailRow
+                        label="Aadhaar"
+                        value={receiver.aadhaarLinked ? "linked" : "not linked"}
+                      />
                       <DetailRow
                         label="KYC"
                         value={
