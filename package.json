@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run build --workspace @wallet/openapi-client && concurrently \"npm run dev --workspace @wallet/api\" \"npm run dev --workspace @wallet/web\"",
+    "dev": "concurrently \"npm run dev --workspace @wallet/api\" \"npm run dev --workspace @wallet/web\"",
     "build": "npm run build --workspace @wallet/openapi-client && npm run build --workspace @wallet/api && npm run build --workspace @wallet/web",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

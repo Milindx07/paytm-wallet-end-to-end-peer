@@ -28,12 +28,6 @@ npm run dev --workspace @wallet/api
 npm run dev --workspace @wallet/web
 ```
 
-Open in local dev:
-
-- Web app login: [http://localhost:3000/login](http://localhost:3000/login)
-- API health: [http://localhost:4000/api/health](http://localhost:4000/api/health)
-- API docs: [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
-
 ## Deploy Locally Behind Nginx
 
 ```powershell
@@ -44,9 +38,9 @@ npm run health
 
 Open:
 
-- Web app login: [http://localhost:3000/login](http://localhost:3000/login)
-- API health: [http://localhost:4000/api/health](http://localhost:4000/api/health)
-- API docs: [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
+- Web dashboard: http://localhost
+- API health: http://localhost:4000/api/health
+- API docs: http://localhost:4000/api/docs
 
 ## Demo Users
 
