@@ -40,7 +40,6 @@ import { configureSdk, makeIdempotencyKey } from "../lib/sdk";
 import { sessionAtom, transactionsAtom, walletAtom } from "../state/session";
 
 const sessionStorageKey = "wallet-session";
-const defaultReceiverIdentifier = "aisha@wallet";
 
 type BackendNotice = {
   title: string;
@@ -137,7 +136,7 @@ export function DashboardClient() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [receiver, setReceiver] = useState<Receiver | null>(null);
   const [topUpAmount, setTopUpAmount] = useState("500");
-  const [receiverIdentifier, setReceiverIdentifier] = useState("aisha@wallet");
+  const [receiverIdentifier, setReceiverIdentifier] = useState("");
   const [transferAmount, setTransferAmount] = useState("100");
   const [note, setNote] = useState("Lunch split");
   const [aadhaarLast4, setAadhaarLast4] = useState("4321");
@@ -177,15 +176,6 @@ export function DashboardClient() {
       setWallet(walletResponse.wallet);
       setTransactions(transactionsResponse.transactions);
       setProfile(profileResponse);
-
-      try {
-        const receiverResponse = await ReceiversService.resolveReceiver({
-          identifier: defaultReceiverIdentifier
-        });
-        setReceiver(receiverResponse.receiver);
-      } catch {
-        setReceiver(null);
-      }
 
       return {
         wallet: walletResponse.wallet,
@@ -697,6 +687,7 @@ export function DashboardClient() {
                     <div className="flex gap-2">
                       <input
                         className="focus-ring min-h-11 w-full rounded-md border border-slate-200 px-3 outline-none"
+                        placeholder="aisha@wallet, rohan@wallet, or email"
                         value={receiverIdentifier}
                         onChange={(event) => {
                           setReceiverIdentifier(event.target.value);
@@ -786,13 +777,23 @@ export function DashboardClient() {
                       <DetailRow label="Rails" value={receiver.rails.join(", ")} />
                     </div>
                   ) : (
-                    <div className="flex h-full min-h-56 flex-col justify-center text-center text-sm text-slate-500">
+                    <div className="flex h-full min-h-56 flex-col justify-center text-sm text-slate-500">
                       <Smartphone
                         className="mx-auto mb-3 text-slate-400"
                         size={28}
                         aria-hidden="true"
                       />
-                      Verify a receiver to load wallet, UPI, and KYC status.
+                      <p className="text-center font-semibold text-ink">
+                        Receiver will load after verification
+                      </p>
+                      <div className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-2">
+                        <DetailRow
+                          label="Typed receiver"
+                          value={receiverIdentifier.trim() || "Waiting for input"}
+                        />
+                        <DetailRow label="Status" value="Not verified yet" />
+                        <DetailRow label="Next step" value="Click Verify" />
+                      </div>
                     </div>
                   )}
                 </div>
