@@ -30,7 +30,7 @@ npm run dev --workspace @wallet/web
 
 Open in local dev:
 
-- Web dashboard: [http://localhost:3000/login](http://localhost:3000/login)
+- Web app login: [http://localhost:3000/login](http://localhost:3000/login)
 - API health: [http://localhost:4000/api/health](http://localhost:4000/api/health)
 - API docs: [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -44,7 +44,7 @@ npm run health
 
 Open:
 
-- Web dashboard: [http://localhost/login](http://localhost/login)
+- Web app login: [http://localhost:3000/login](http://localhost:3000/login)
 - API health: [http://localhost:4000/api/health](http://localhost:4000/api/health)
 - API docs: [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
